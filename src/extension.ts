@@ -1,26 +1,52 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+// Showing side panel
+export class MyViewProvider implements vscode.WebviewViewProvider {
+  public static readonly viewType = "GTestList";
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "gtest-plugin" is now active!');
+  constructor(private readonly context: vscode.ExtensionContext) {}
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('gtest-plugin.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from gtest-plugin!');
-	});
+  resolveWebviewView(
+    webviewView: vscode.WebviewView
+  ) {
+    webviewView.webview.options = {
+      enableScripts: true
+    };
 
-	context.subscriptions.push(disposable);
+    webviewView.webview.html = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <body>
+        <h3>Hello 👋</h3>
+        <p>This is an empty panel.</p>
+      </body>
+      </html>
+    `;
+  }
 }
 
-// This method is called when your extension is deactivated
+// Activating extension
+export function activate(context: vscode.ExtensionContext) {
+    console.log('Starting GTest Plugin');
+
+
+    const disposable = vscode.commands.registerCommand('gtest-plugin.helloWorld', () => {
+        // Message box pop up
+        vscode.window.showInformationMessage('Hello World from gtest-plugin!');
+    });
+
+    // Creating side panel view
+    const provider = new MyViewProvider(context);
+
+    // Registering command and side panel view
+    context.subscriptions.push(disposable);
+    context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      MyViewProvider.viewType,
+      provider
+    )
+  );
+}
+
+// Deactivating extension
 export function deactivate() {}

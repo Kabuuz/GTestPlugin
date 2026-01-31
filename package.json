@@ -17,7 +17,24 @@
         "command": "gtest-plugin.helloWorld",
         "title": "Hello World"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "myExtension",
+          "title": "My Panel",
+          "icon": "media/testing.svg"
+        }
+      ]
+    },
+    "views": {
+      "myExtension": [
+        {
+          "id": "GTestList",
+          "name": "Google tests"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

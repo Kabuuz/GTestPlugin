@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+  <!-- Flask -->
+  <path d="M9 3h6"></path>
+  <path d="M10 3v5l-4.5 7.8A4 4 0 0 0 9 21h6a4 4 0 0 0 3.5-5.2L14 8V3"></path>
+
+  <!-- Liquid level -->
+  <path d="M8 14h8"></path>
+
+  <!-- Checkmark -->
+  <path d="M10 17l1.5 1.5L14 16"></path>
+
+</svg>
