@@ -1,71 +1,130 @@
-# gtest-plugin README
+# GTest Plugin for VS Code
 
-This is the README for your extension "gtest-plugin". After writing up a brief description, we recommend including the following sections.
-
-## Features
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+Run and debug **Google Test** (GTest) tests inside VS Code with **CMake Tools**. Tests are discovered from your source, shown in a side panel (grouped by executable → suite → test), and can be run or debugged from the tree or from **Run** / **Debug** code lenses next to each test in the editor.
 
 ## Requirements
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- **VS Code** 1.103 or newer  
+- **CMake Tools** (`ms-vscode.cmake-tools`) – required; used for configure, build, and project info  
+- **C/C++** (`ms-vscode.cpptools`) – required for **debugging** (uses `cppdbg`)
 
-## Extension Settings
+Your project must use CMake and build test executables (e.g. via `add_executable` and GTest).
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+## Features
 
-For example:
+- **Test discovery** – Scans source for `TEST`, `TEST_F`, and `TEST_P` and maps them to CMake executable targets.
+- **Side panel** – Tree view: **Executable → Test Suite → Test**, with status icons (not run / passed / failed / ignored).
+- **Run / Debug** – From the tree (context menu) or from **Run** / **Debug** code lenses above each test in `.cpp`/`.hpp` (positions update when you edit).
+- **Incremental build** – Runs CMake only when `CMakeLists.txt` (or equivalent) changed, and builds only when source files changed (no full rebuild like some other test extensions).
+- **Test output** – Per-test logs from the last run in the **Output** panel (bottom, same place as Terminal/Debug Console). Use the **GTest** channel and the panel’s built-in Find (Ctrl+F) to search.
+- **Configurable** – Custom CMake directory, scan directory, glob pattern, env vars, GTest flags, default filter, and **custom GDB path and env file** (see below).
 
-This extension contributes the following settings:
+## Setup
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+1. Install **GTest Plugin**, **CMake Tools**, and **C/C++**.
+2. Open a CMake workspace (with `CMakeLists.txt`).
+3. Configure and select a kit/preset with CMake Tools as usual.
+4. Open the **GTest** view in the activity bar (flask icon). Click **Refresh Tests** to discover tests.
 
-## Known Issues
+Tests appear under each test executable. Use **Run Test** / **Debug Test** from the context menu on a test, suite, or executable, or use the **Run** / **Debug** code lenses in the editor.
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+## Configuration
 
-## Release Notes
+All settings live under **GTest Plugin** in VS Code settings (or in `settings.json` under `gtest-plugin`).
 
-Users appreciate release notes as you update your extension.
+| Setting | Description | Default |
+|--------|-------------|---------|
+| **`gtest-plugin.cmakeSourceDirectory`** | **Custom directory for CMake project root** (where `CMakeLists.txt` is). Use `${workspaceFolder}` for workspace root. Leave empty to use the workspace folder. | `""` |
+| `gtest-plugin.scanDirectory` | Directory to scan for test sources. Use `${workspaceFolder}` for the workspace root. | `"${workspaceFolder}"` |
+| `gtest-plugin.scanIncludePattern` | Glob for files to scan (relative to `scanDirectory`). | `"**/*{test,tests,spec}*.{cpp,hpp}"` |
+| `gtest-plugin.buildJobs` | Parallel build jobs. `0` = use CMake Tools default / build preset. | `0` |
+| `gtest-plugin.gtestFilter` | Default GTest filter (e.g. `-*Disabled*`). | `""` |
+| `gtest-plugin.env` | Environment variables when running/debugging tests (key-value object). | `{}` |
+| `gtest-plugin.gtestFlags` | Extra GTest flags (e.g. `--gtest_repeat=2`). | `[]` |
+| **`gtest-plugin.miDebuggerPath`** | **Path to GDB** (or other MI debugger) for debugging tests. Empty = use C/C++ default or a matching `launch.json` config. | `""` |
+| **`gtest-plugin.envFile`** | **Path to a .env file** loaded when running/debugging tests. Use `${workspaceFolder}` for workspace root. Empty = use env from settings or from a matching `launch.json` config. | `""` |
 
-### 1.0.0
+## Custom CMake directory
 
-Initial release of ...
+If your CMake project root (where `CMakeLists.txt` lives) is **not** the workspace folder—for example you open the repo root but the CMake project is in a subfolder—set **`gtest-plugin.cmakeSourceDirectory`** to that path.
 
-### 1.0.1
+- The plugin uses this directory when asking CMake Tools for the project (configure, build, code model).
+- Incremental build logic (CMakeLists change detection, source mtimes) uses this root as well.
+- Use `${workspaceFolder}` in the path, e.g. `${workspaceFolder}/subdir` or `${workspaceFolder}/build-system`.
 
-Fixed issue #.
+Example:
 
-### 1.1.0
+```json
+{
+  "gtest-plugin.cmakeSourceDirectory": "${workspaceFolder}/subdir"
+}
+```
 
-Added features X, Y, and Z.
+Leave empty if your workspace folder **is** the CMake project root (default).
 
----
+## Custom GDB path and environment file
 
-## Following extension guidelines
+Debugging uses the **C/C++** extension (`cppdbg`). GDB path and env file are chosen in this order:
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+1. **GTest Plugin settings**  
+   - `gtest-plugin.miDebuggerPath` – custom GDB (or MI debugger) path.  
+   - `gtest-plugin.envFile` – path to a `.env` file (supports `${workspaceFolder}`).
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+2. **Matching `launch.json` config**  
+   If you don’t set the above (or leave them empty), the extension looks in `.vscode/launch.json` for a **cppdbg** configuration whose `program` matches the test executable (same path or same executable name). From that config it reuses:
+   - `miDebuggerPath`
+   - `envFile`
 
-## Working with Markdown
+So you can:
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+- Set **GDB and env file only in GTest Plugin**: use `gtest-plugin.miDebuggerPath` and `gtest-plugin.envFile`.
+- Set them in **launch.json** for your test executable: the plugin will reuse that config’s `miDebuggerPath` and `envFile` when you debug from the GTest view or code lens.
+- Use **CMake Tools** to drive build/configure; your existing launch config (e.g. from CMake Tools or a hand-written one) is used only for **matching** the executable so we can copy GDB path and env file into the dynamic debug session. The actual **program** and **args** (e.g. `--gtest_filter=...`) are always set by the plugin.
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+Example in **settings.json**:
 
-## For more information
+```json
+{
+  "gtest-plugin.miDebuggerPath": "/usr/bin/gdb",
+  "gtest-plugin.envFile": "${workspaceFolder}/.env.test"
+}
+```
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+Example in **launch.json** (plugin will reuse `miDebuggerPath` and `envFile` for a config that matches the test executable):
 
-**Enjoy!**
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "cppdbg",
+      "request": "launch",
+      "name": "Debug my_test_exe",
+      "program": "${workspaceFolder}/build/my_test_exe",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "envFile": "${workspaceFolder}/.env"
+    }
+  ]
+}
+```
+
+## Usage
+
+- **Rescan tests** – Click the **refresh (reload)** icon in the **Google Tests** view title bar to rescan from the configured directory.
+- **Run** – Right-click test/suite/executable → **Run Test**, or click **Run** in the code lens.
+- **Debug** – Right-click → **Debug Test**, or click **Debug** in the code lens.
+- **View output** – After running tests, logs appear in the **Output** panel (bottom) under the **GTest** channel. Right-click a **test** → **Show test output** to show that test’s last run log in the same panel. Use the Output panel’s Find (Ctrl+F) to search.
+
+## Known limitations
+
+- **Parametrized tests** (`TEST_P`) appear as one node per test name; running it runs all parameter instances. Per-parameter nodes (e.g. `Suite/Test/0`) would require listing tests from the executable (e.g. `--gtest_list_tests`).
+- **Build jobs** – The CMake Tools API does not expose `-j`; use a CMake **build preset** with `jobs` if you need parallel builds from the extension.
+- **Debug config** – Only `miDebuggerPath` and `envFile` are merged from a matching `launch.json`; other debug options (e.g. `setupCommands`) are not merged. You can still set GDB and env in plugin settings.
+
+## Release notes
+
+### 0.0.1
+
+- Initial release: test discovery, tree view, run/debug from tree and code lens, incremental build, test output panel with search.
+- Debug: support for custom GDB path and env file via plugin settings and reuse from matching `launch.json` config.
+- **Custom CMake directory**: `gtest-plugin.cmakeSourceDirectory` to point the plugin at a CMake project root that is not the workspace folder.

@@ -1,41 +1,178 @@
 {
   "name": "gtest-plugin",
   "displayName": "gtest-plugin",
-  "description": "GTest plugin for VSCode",
+  "description": "GTest plugin for VSCode - run and debug Google Test with CMake Tools",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.103.1"
   },
   "categories": [
+    "Testing",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:CMakeLists.txt",
+    "onView:GTestList"
+  ],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "GTest Plugin",
+      "properties": {
+        "gtest-plugin.cmakeSourceDirectory": {
+          "type": "string",
+          "default": "",
+          "description": "Custom directory for CMake project root (where CMakeLists.txt is). Use ${workspaceFolder} for workspace root. Leave empty to use the workspace folder."
+        },
+        "gtest-plugin.scanDirectory": {
+          "type": "string",
+          "default": "${workspaceFolder}",
+          "description": "Directory to scan for test source files (.cpp, .hpp). Use ${workspaceFolder} for workspace root."
+        },
+        "gtest-plugin.scanIncludePattern": {
+          "type": "string",
+          "default": "**/*{test,tests,spec}*.{cpp,hpp}",
+          "description": "Glob pattern for files to scan (relative to scanDirectory). Matches common test file names."
+        },
+        "gtest-plugin.buildJobs": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "description": "Number of parallel jobs for CMake build. 0 = use CMake Tools default (or build preset). Passed as -j to build."
+        },
+        "gtest-plugin.gtestFilter": {
+          "type": "string",
+          "default": "",
+          "description": "Default GTest filter passed to test executable (e.g. *Foo*:-*Disabled*). Empty = no filter."
+        },
+        "gtest-plugin.env": {
+          "type": "object",
+          "default": {},
+          "description": "Environment variables to set when running tests. Keys are variable names, values are strings."
+        },
+        "gtest-plugin.gtestFlags": {
+          "type": "array",
+          "items": { "type": "string" },
+          "default": [],
+          "description": "Extra flags passed to GTest executable (e.g. --gtest_repeat=2, --gtest_break_on_failure)."
+        },
+        "gtest-plugin.miDebuggerPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to GDB (or other MI debugger) for debugging tests. Leave empty to use C/C++ extension default or a matching launch.json config."
+        },
+        "gtest-plugin.envFile": {
+          "type": "string",
+          "default": "",
+          "description": "Path to .env file loaded when running/debugging tests. Use ${workspaceFolder} for workspace root. Leave empty to use env from settings or launch.json."
+        }
+      }
+    },
     "commands": [
       {
-        "command": "gtest-plugin.helloWorld",
-        "title": "Hello World"
+        "command": "gtest-plugin.runTest",
+        "title": "Run Test",
+        "icon": "$(play)"
+      },
+      {
+        "command": "gtest-plugin.debugTest",
+        "title": "Debug Test",
+        "icon": "$(debug-start)"
+      },
+      {
+        "command": "gtest-plugin.runTestSuite",
+        "title": "Run Test Suite"
+      },
+      {
+        "command": "gtest-plugin.debugTestSuite",
+        "title": "Debug Test Suite"
+      },
+      {
+        "command": "gtest-plugin.runExecutable",
+        "title": "Run All Tests in Executable"
+      },
+      {
+        "command": "gtest-plugin.debugExecutable",
+        "title": "Debug All Tests in Executable"
+      },
+      {
+        "command": "gtest-plugin.refreshTests",
+        "title": "Rescan Tests",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "gtest-plugin.showTestOutput",
+        "title": "Show Test Output"
+      },
+      {
+        "command": "gtest-plugin.runSingleTest",
+        "title": "Run This Test"
+      },
+      {
+        "command": "gtest-plugin.debugSingleTest",
+        "title": "Debug This Test"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "myExtension",
-          "title": "My Panel",
+          "id": "gtest-plugin",
+          "title": "GTest",
           "icon": "media/testing.svg"
         }
       ]
     },
     "views": {
-      "myExtension": [
+      "gtest-plugin": [
         {
           "id": "GTestList",
-          "name": "Google tests"
+          "name": "Google Tests"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "gtest-plugin.runTest",
+          "when": "view == GTestList && viewItem == gtest-test"
+        },
+        {
+          "command": "gtest-plugin.debugTest",
+          "when": "view == GTestList && viewItem == gtest-test"
+        },
+        {
+          "command": "gtest-plugin.runTestSuite",
+          "when": "view == GTestList && viewItem == gtest-suite"
+        },
+        {
+          "command": "gtest-plugin.debugTestSuite",
+          "when": "view == GTestList && viewItem == gtest-suite"
+        },
+        {
+          "command": "gtest-plugin.runExecutable",
+          "when": "view == GTestList && viewItem == gtest-executable"
+        },
+        {
+          "command": "gtest-plugin.debugExecutable",
+          "when": "view == GTestList && viewItem == gtest-executable"
+        },
+        {
+          "command": "gtest-plugin.showTestOutput",
+          "when": "view == GTestList && viewItem == gtest-test"
+        }
+      ],
+      "view/title": [
+        {
+          "command": "gtest-plugin.refreshTests",
+          "when": "view == GTestList",
+          "group": "navigation"
         }
       ]
     }
   },
+  "extensionDependencies": [
+    "ms-vscode.cmake-tools"
+  ],
   "scripts": {
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
@@ -51,7 +188,8 @@
     "typescript-eslint": "^8.52.0",
     "eslint": "^9.39.2",
     "typescript": "^5.9.3",
-    "@vscode/test-cli": "^0.0.12",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-cli": "^0.10.12",
+    "@vscode/test-electron": "^2.5.2",
+    "vscode-cmake-tools-api": "^1.4.0"
   }
 }
